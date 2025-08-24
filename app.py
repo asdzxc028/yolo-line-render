@@ -11,13 +11,28 @@ import cv2
 import torch
 import sqlite3
 
+def init_db():
+    conn = sqlite3.connect('detections.db')  # 或你的資料庫路徑
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS detection (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            image_name TEXT,
+            timestamp TEXT,
+            label TEXT,
+            count INTEGER
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
 # 載入 YOLOv5 模型（需安裝 yolov5 repo 並放此 .pt 模型）
 try:
     model = torch.hub.load('ultralytics/yolov5', 'custom', path='animals.pt', force_reload=True)
 except Exception as e:
     print("❌ 無法載入 YOLOv5 模型：", e)
     model = None  # 避免後續 crash
-    
+  
 # 如果你要使用 YOLO 模型辨識
 
 app = Flask(__name__)
@@ -129,4 +144,5 @@ def home():
     return "Flask is running."
 
 if __name__ == "__main__":
+    init_db()  # 啟動伺服器前先確保資料表存在
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
