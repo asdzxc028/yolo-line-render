@@ -2,14 +2,14 @@ from flask import Flask, request, abort, send_from_directory
 from linebot import LineBotApi, WebhookHandler
 from linebot.models import MessageEvent, ImageMessage, TextSendMessage, ImageSendMessage
 from linebot.exceptions import InvalidSignatureError
-import np
+import numpy as np
 import datetime
-import requests
 import os
 from PIL import Image
 import uuid
 import cv2
 import torch
+import sqlite3
 
 # 載入 YOLOv5 模型（需安裝 yolov5 repo 並放此 .pt 模型）
 try:
@@ -76,6 +76,21 @@ def handle_image(event):
     for *box, conf, cls in results.xyxy[0].tolist():
         label = labels[int(cls)]
         detected_items[label] = detected_items.get(label, 0) + 1
+        
+    # ✅ 儲存資料進 SQLite（最佳做法）
+    DB_PATH = os.path.join(os.path.dirname(__file__), 'detections.db')
+    conn = sqlite3.connect(DB_PATH)  # 先建立連線物件
+    cursor = conn.cursor()           # 從連線建立 cursor
+    time_now_full = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    for label, count in detected_items.items():
+        cursor.execute('''
+        INSERT INTO detections (image_name, timestamp, label, count)
+        VALUES (?, ?, ?, ?)
+    ''', (image_name, time_now_full, label, count))
+
+    conn.commit()
+    conn.close()
 
     # 4️⃣ 用 OpenCV 自行畫框（不顯示信心值）
     result_img_path = os.path.join(UPLOAD_FOLDER, f"result_{image_name}")
@@ -84,8 +99,7 @@ def handle_image(event):
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     else:
         img_rgb = img  # 預防不是 NumPy 陣列的情況
-        Image.fromarray(img_rgb).save(result_img_path)
-
+    Image.fromarray(img_rgb).save(result_img_path)
 
     # 5️⃣ 組合回傳訊息
     time_now = datetime.datetime.now().strftime('%H:%M')
