@@ -2,18 +2,23 @@ from flask import Flask, request, abort, send_from_directory
 from linebot import LineBotApi, WebhookHandler
 from linebot.models import MessageEvent, ImageMessage, TextSendMessage, ImageSendMessage
 from linebot.exceptions import InvalidSignatureError
-
+import np
 import datetime
 import requests
 import os
 from PIL import Image
 import uuid
-
 import cv2
-import numpy as np
+import torch
 
+# 載入 YOLOv5 模型（需安裝 yolov5 repo 並放此 .pt 模型）
+try:
+    model = torch.hub.load('ultralytics/yolov5', 'custom', path='animals.pt', force_reload=True)
+except Exception as e:
+    print("❌ 無法載入 YOLOv5 模型：", e)
+    model = None  # 避免後續 crash
+    
 # 如果你要使用 YOLO 模型辨識
-from ultralytics import YOLO
 
 app = Flask(__name__)
 
@@ -26,8 +31,6 @@ handler = WebhookHandler(LINE_CHANNEL_SECRET)
 UPLOAD_FOLDER = 'static/uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# 載入 YOLO 模型
-model = YOLO('animals.pt')  # 可以換成你訓練好的模型
 
 @app.route("/callback", methods=['POST'])
 def callback():
@@ -45,6 +48,13 @@ def callback():
 
 @handler.add(MessageEvent, message=ImageMessage)
 def handle_image(event):
+    if model is None:
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text="❌ 模型尚未載入，無法辨識圖片。")
+        )
+        return
+    
     message_id = event.message.id
 
     # 1️⃣ 下載圖片
@@ -57,31 +67,25 @@ def handle_image(event):
             f.write(chunk)
 
     # 2️⃣ 用 YOLO 分析圖片
-    result = model(image_path)[0]
-    boxes = result.boxes
-    labels = model.names
+    results = model(image_path)
+    results.render()  # 在原圖上畫框
+    labels = results.names
 
-    # 3️⃣ 統計辨識結果
+    # 統計辨識
     detected_items = {}
-    for box in boxes:
-        cls = int(box.cls[0])
-        label = labels[cls]
+    for *box, conf, cls in results.xyxy[0].tolist():
+        label = labels[int(cls)]
         detected_items[label] = detected_items.get(label, 0) + 1
 
     # 4️⃣ 用 OpenCV 自行畫框（不顯示信心值）
-    result_path = os.path.join(UPLOAD_FOLDER, f"result_{image_name}")
-    img = cv2.imread(image_path)
+    result_img_path = os.path.join(UPLOAD_FOLDER, f"result_{image_name}")
+    img = results.ims[0]
+    if isinstance(img, np.ndarray):
+        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    else:
+        img_rgb = img  # 預防不是 NumPy 陣列的情況
+        Image.fromarray(img_rgb).save(result_img_path)
 
-    for box in boxes:
-        x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
-        cls = int(box.cls[0])
-        label = labels[cls]
-
-        cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-        cv2.putText(img, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.8, (0, 255, 0), 2)
-
-    cv2.imwrite(result_path, img)
 
     # 5️⃣ 組合回傳訊息
     time_now = datetime.datetime.now().strftime('%H:%M')
@@ -90,7 +94,8 @@ def handle_image(event):
         message_text += f"{label}: {count}\n"
 
     # 6️⃣ 準備回傳
-    image_url = f"https://yolo-line-render.onrender.com/static/uploads/result_{image_name}"
+    BASE_URL = os.getenv("BASE_URL","https://yolo-line-render.onrender.com")
+    image_url = f"{BASE_URL}/static/uploads/result_{image_name}"
 
     line_bot_api.reply_message(event.reply_token, [
         TextSendMessage(text=message_text),
