@@ -4,3 +4,4 @@ ultralytics
 pillow
 torch
 opencv-python-headless
+gunicorn
