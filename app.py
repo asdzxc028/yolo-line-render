@@ -18,8 +18,8 @@ from ultralytics import YOLO
 app = Flask(__name__)
 
 # LINE API 金鑰
-LINE_CHANNEL_ACCESS_TOKEN = 'WA1bLzN38CJbpKWEG9+ZNNzQQEZ0CR6zyiQGynhky2HVQem/LkI1HZgAfSsKImhIQ1CsBEKkicr+R7Sd5Pu1EvpXGa1xRN0/xmC+ePhMsMP2rxXFXQWhIbdn8uAtAXHD8pjDeIsfUJ4lG2gudvyc/gdB04t89/1O/w1cDnyilFU='
-LINE_CHANNEL_SECRET = '36e4a3ed3f33de2ecf6f703bdecdf4ae'
+LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
+LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
@@ -33,6 +33,8 @@ model = YOLO('animals.pt')  # 可以換成你訓練好的模型
 def callback():
     signature = request.headers['X-Line-Signature']
     body = request.get_data(as_text=True)
+    
+    print("Received body:", body)
 
     try:
         handler.handle(body, signature)
@@ -88,7 +90,7 @@ def handle_image(event):
         message_text += f"{label}: {count}\n"
 
     # 6️⃣ 準備回傳
-    image_url = f"https://你的render專案.onrender.com/static/uploads/result_{image_name}"
+    image_url = f"https://yolo-line-render.onrender.com/static/uploads/result_{image_name}"
 
     line_bot_api.reply_message(event.reply_token, [
         TextSendMessage(text=message_text),
@@ -108,4 +110,4 @@ def home():
     return "Flask is running."
 
 if __name__ == "__main__":
-    app.run()
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
