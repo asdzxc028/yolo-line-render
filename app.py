@@ -26,9 +26,11 @@ def init_db():
     conn.commit()
     conn.close()
 
+model_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'animals.pt'))
+
 # 載入 YOLOv5 模型（需安裝 yolov5 repo 並放此 .pt 模型）
 try:
-    model = torch.hub.load('ultralytics/yolov5', 'custom', path='animals.pt', force_reload=True)
+    model = torch.hub.load('ultralytics/yolov5', 'custom', path=model_path, force_reload=True)
     print("✅ 模型載入成功！")
 except Exception as e:
     print("❌ 無法載入 YOLOv5 模型：", e)
