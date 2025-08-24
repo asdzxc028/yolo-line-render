@@ -15,7 +15,7 @@ def init_db():
     conn = sqlite3.connect('detections.db')  # 或你的資料庫路徑
     cursor = conn.cursor()
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS detection (
+        CREATE TABLE IF NOT EXISTS detections (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             image_name TEXT,
             timestamp TEXT,
@@ -29,6 +29,7 @@ def init_db():
 # 載入 YOLOv5 模型（需安裝 yolov5 repo 並放此 .pt 模型）
 try:
     model = torch.hub.load('ultralytics/yolov5', 'custom', path='animals.pt', force_reload=True)
+    print("✅ 模型載入成功！")
 except Exception as e:
     print("❌ 無法載入 YOLOv5 模型：", e)
     model = None  # 避免後續 crash
@@ -78,8 +79,7 @@ def handle_image(event):
     image_path = os.path.join(UPLOAD_FOLDER, image_name)
 
     with open(image_path, 'wb') as f:
-        for chunk in image_content.iter_content():
-            f.write(chunk)
+        f.write(image_content.content)
 
     # 2️⃣ 用 YOLO 分析圖片
     results = model(image_path)
