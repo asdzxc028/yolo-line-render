@@ -87,26 +87,21 @@ def callback():
 
 @handler.add(MessageEvent, message=ImageMessage)
 def handle_image(event):
-    # 模型延遲載入
+    # 1️⃣ 延遲載入 YOLOv5 模型
     try:
         device = select_device('')
         model = DetectMultiBackend('animals.pt', device=device)
+        model.names = model.names or {i: f'class_{i}' for i in range(1000)}  # 預設 class 名稱
     except Exception as e:
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(text=f"❌ 模型載入失敗：{e}")
-    )
-    return
-    if model is None:
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text="❌ 模型尚未載入，無法辨識圖片。")
         )
         return
-    
+
     message_id = event.message.id
 
-    # 1️⃣ 下載圖片
+    # 2️⃣ 下載圖片
     image_content = line_bot_api.get_message_content(message_id)
     image_name = f"{uuid.uuid4()}.jpg"
     image_path = os.path.join(UPLOAD_FOLDER, image_name)
@@ -114,24 +109,19 @@ def handle_image(event):
     with open(image_path, 'wb') as f:
         f.write(image_content.content)
 
-   # 2️⃣ 用 YOLOv5 分析圖片（使用 DetectMultiBackend）
-
-
-    img0 = cv2.imread(image_path)  # 原圖 (BGR)
-    img = letterbox(img0, new_shape=640)[0]  # 調整大小
+    # 3️⃣ 處理圖片與推論
+    img0 = cv2.imread(image_path)
+    img = letterbox(img0, new_shape=640)[0]
     img = img[:, :, ::-1].transpose(2, 0, 1)  # BGR → RGB → CHW
     img = np.ascontiguousarray(img)
 
-    img_tensor = torch.from_numpy(img).to(model.device)
-    img_tensor = img_tensor.float() / 255.0  # 正規化 0~1
+    img_tensor = torch.from_numpy(img).to(model.device).float() / 255.0
     if img_tensor.ndimension() == 3:
-        img_tensor = img_tensor.unsqueeze(0)  # 增加 batch 維度
+        img_tensor = img_tensor.unsqueeze(0)
 
-    # 模型推論
     pred = model(img_tensor)
     pred = non_max_suppression(pred, conf_thres=0.25, iou_thres=0.45)[0]
 
-    # 統計辨識
     detected_items = {}
     if pred is not None and len(pred):
         pred[:, :4] = scale_coords(img_tensor.shape[2:], pred[:, :4], img0.shape).round()
@@ -139,48 +129,46 @@ def handle_image(event):
             label = model.names[int(cls)]
             detected_items[label] = detected_items.get(label, 0) + 1
 
-        
-    # ✅ 儲存資料進 SQLite（最佳做法）
+    # 4️⃣ 儲存到資料庫
     DB_PATH = os.path.join(os.path.dirname(__file__), 'detections.db')
-    conn = sqlite3.connect(DB_PATH)  # 先建立連線物件
-    cursor = conn.cursor()           # 從連線建立 cursor
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
     time_now_full = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     for label, count in detected_items.items():
         cursor.execute('''
-        INSERT INTO detections (image_name, timestamp, label, count)
-        VALUES (?, ?, ?, ?)
-    ''', (image_name, time_now_full, label, count))
+            INSERT INTO detections (image_name, timestamp, label, count)
+            VALUES (?, ?, ?, ?)
+        ''', (image_name, time_now_full, label, count))
 
     conn.commit()
     conn.close()
 
-    # 4️⃣ 在圖片上畫框
+    # 5️⃣ 在圖片上畫框
     for *box, conf, cls in pred.tolist():
         x1, y1, x2, y2 = map(int, box)
         label = model.names[int(cls)]
-        color = (0, 255, 0)  # 綠色框
+        color = (0, 255, 0)
         cv2.rectangle(img0, (x1, y1), (x2, y2), color, 2)
         cv2.putText(img0, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX,
-                0.8, color, 2, lineType=cv2.LINE_AA)
+                    0.8, color, 2, lineType=cv2.LINE_AA)
 
-    # 儲存結果圖
     result_img_path = os.path.join(UPLOAD_FOLDER, f"result_{image_name}")
     Image.fromarray(cv2.cvtColor(img0, cv2.COLOR_BGR2RGB)).save(result_img_path)
-    
-    # ✅ 建議在這裡釋放記憶體
+
+    # 6️⃣ 記憶體釋放
     del pred
     del img_tensor
+    del model
     torch.cuda.empty_cache()
 
-    # 5️⃣ 組合回傳訊息
+    # 7️⃣ 回傳 LINE 訊息
     time_now = datetime.datetime.now().strftime('%H:%M')
     message_text = f"辨識時間：{time_now}\n"
     for label, count in detected_items.items():
         message_text += f"{label}: {count}\n"
 
-    # 6️⃣ 準備回傳
-    BASE_URL = os.getenv("BASE_URL","https://yolo-line-render.onrender.com")
+    BASE_URL = os.getenv("BASE_URL", "https://yolo-line-render.onrender.com")
     image_url = f"{BASE_URL}/static/uploads/result_{image_name}"
 
     line_bot_api.reply_message(event.reply_token, [
