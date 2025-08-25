@@ -9,3 +9,4 @@ torchvision
 numpy
 matplotlib
 PyYAML
+seaborn
