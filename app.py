@@ -161,7 +161,11 @@ def handle_image(event):
     # 儲存結果圖
     result_img_path = os.path.join(UPLOAD_FOLDER, f"result_{image_name}")
     Image.fromarray(cv2.cvtColor(img0, cv2.COLOR_BGR2RGB)).save(result_img_path)
-
+    
+    # ✅ 建議在這裡釋放記憶體
+    del pred
+    del img_tensor
+    torch.cuda.empty_cache()
 
     # 5️⃣ 組合回傳訊息
     time_now = datetime.datetime.now().strftime('%H:%M')
