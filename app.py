@@ -33,9 +33,26 @@ import sys
 sys.path.append('yolov5')  # 加入 yolov5 的資料夾路徑
 
 from models.common import DetectMultiBackend
-from utils.general import non_max_suppression, scale_coords
 from utils.torch_utils import select_device
 from utils.augmentations import letterbox
+
+from utils.general import non_max_suppression  # 不要匯入 scale_coords
+
+# 👉 自己補上 scale_coords 函數
+def scale_coords(img1_shape, coords, img0_shape, ratio_pad=None):
+    """將預測座標從模型圖像尺寸映射回原始圖像尺寸"""
+    if ratio_pad is None:
+        gain = min(img1_shape[0] / img0_shape[0], img1_shape[1] / img0_shape[1])
+        pad = (img1_shape[1] - img0_shape[1] * gain) / 2, (img1_shape[0] - img0_shape[0] * gain) / 2
+    else:
+        gain = ratio_pad[0][0]
+        pad = ratio_pad[1]
+
+    coords[:, [0, 2]] -= pad[0]
+    coords[:, [1, 3]] -= pad[1]
+    coords[:, :4] /= gain
+    coords[:, :4] = coords[:, :4].clamp(min=0)
+    return coords
 
 # 初始化 YOLOv5 模型（非 hub 方式）
 weights = 'animals.pt'  # 你的模型檔案路徑
