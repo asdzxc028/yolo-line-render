@@ -56,10 +56,6 @@ def scale_coords(img1_shape, coords, img0_shape, ratio_pad=None):
 
 # 初始化 YOLOv5 模型（非 hub 方式）
 weights = 'animals.pt'  # 你的模型檔案路徑
-device = select_device('')  # 空字串代表自動選 GPU 或 CPU
-model = DetectMultiBackend(weights, device=device)
-print("✅ 模型載入成功！")
-
   
 # 如果你要使用 YOLO 模型辨識
 
@@ -91,6 +87,16 @@ def callback():
 
 @handler.add(MessageEvent, message=ImageMessage)
 def handle_image(event):
+    # 模型延遲載入
+    try:
+        device = select_device('')
+        model = DetectMultiBackend('animals.pt', device=device)
+    except Exception as e:
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text=f"❌ 模型載入失敗：{e}")
+    )
+    return
     if model is None:
         line_bot_api.reply_message(
             event.reply_token,
