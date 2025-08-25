@@ -7,3 +7,5 @@ opencv-python-headless
 gunicorn
 torchvision
 numpy
+matplotlib
+PyYAML

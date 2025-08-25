@@ -29,12 +29,20 @@ def init_db():
 model_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'animals.pt'))
 
 # 載入 YOLOv5 模型（需安裝 yolov5 repo 並放此 .pt 模型）
-try:
-    model = torch.hub.load('ultralytics/yolov5', 'custom', path=model_path, force_reload=True)
-    print("✅ 模型載入成功！")
-except Exception as e:
-    print("❌ 無法載入 YOLOv5 模型：", e)
-    model = None  # 避免後續 crash
+import sys
+sys.path.append('yolov5')  # 加入 yolov5 的資料夾路徑
+
+from models.common import DetectMultiBackend
+from utils.general import non_max_suppression, scale_coords
+from utils.torch_utils import select_device
+from utils.augmentations import letterbox
+
+# 初始化 YOLOv5 模型（非 hub 方式）
+weights = 'animals.pt'  # 你的模型檔案路徑
+device = select_device('')  # 空字串代表自動選 GPU 或 CPU
+model = DetectMultiBackend(weights, device=device)
+print("✅ 模型載入成功！")
+
   
 # 如果你要使用 YOLO 模型辨識
 
@@ -83,16 +91,31 @@ def handle_image(event):
     with open(image_path, 'wb') as f:
         f.write(image_content.content)
 
-    # 2️⃣ 用 YOLO 分析圖片
-    results = model(image_path)
-    results.render()  # 在原圖上畫框
-    labels = results.names
+   # 2️⃣ 用 YOLOv5 分析圖片（使用 DetectMultiBackend）
+
+
+    img0 = cv2.imread(image_path)  # 原圖 (BGR)
+    img = letterbox(img0, new_shape=640)[0]  # 調整大小
+    img = img[:, :, ::-1].transpose(2, 0, 1)  # BGR → RGB → CHW
+    img = np.ascontiguousarray(img)
+
+    img_tensor = torch.from_numpy(img).to(model.device)
+    img_tensor = img_tensor.float() / 255.0  # 正規化 0~1
+    if img_tensor.ndimension() == 3:
+        img_tensor = img_tensor.unsqueeze(0)  # 增加 batch 維度
+
+    # 模型推論
+    pred = model(img_tensor)
+    pred = non_max_suppression(pred, conf_thres=0.25, iou_thres=0.45)[0]
 
     # 統計辨識
     detected_items = {}
-    for *box, conf, cls in results.xyxy[0].tolist():
-        label = labels[int(cls)]
-        detected_items[label] = detected_items.get(label, 0) + 1
+    if pred is not None and len(pred):
+        pred[:, :4] = scale_coords(img_tensor.shape[2:], pred[:, :4], img0.shape).round()
+        for *box, conf, cls in pred.tolist():
+            label = model.names[int(cls)]
+            detected_items[label] = detected_items.get(label, 0) + 1
+
         
     # ✅ 儲存資料進 SQLite（最佳做法）
     DB_PATH = os.path.join(os.path.dirname(__file__), 'detections.db')
@@ -109,14 +132,19 @@ def handle_image(event):
     conn.commit()
     conn.close()
 
-    # 4️⃣ 用 OpenCV 自行畫框（不顯示信心值）
+    # 4️⃣ 在圖片上畫框
+    for *box, conf, cls in pred.tolist():
+        x1, y1, x2, y2 = map(int, box)
+        label = model.names[int(cls)]
+        color = (0, 255, 0)  # 綠色框
+        cv2.rectangle(img0, (x1, y1), (x2, y2), color, 2)
+        cv2.putText(img0, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX,
+                0.8, color, 2, lineType=cv2.LINE_AA)
+
+    # 儲存結果圖
     result_img_path = os.path.join(UPLOAD_FOLDER, f"result_{image_name}")
-    img = results.ims[0]
-    if isinstance(img, np.ndarray):
-        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    else:
-        img_rgb = img  # 預防不是 NumPy 陣列的情況
-    Image.fromarray(img_rgb).save(result_img_path)
+    Image.fromarray(cv2.cvtColor(img0, cv2.COLOR_BGR2RGB)).save(result_img_path)
+
 
     # 5️⃣ 組合回傳訊息
     time_now = datetime.datetime.now().strftime('%H:%M')
