@@ -75,8 +75,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 def callback():
     signature = request.headers['X-Line-Signature']
     body = request.get_data(as_text=True)
-    
-    print("Received body:", body)
+    print(f"🔽 收到 webhook 請求: {body}")
 
     try:
         handler.handle(body, signature)
@@ -108,6 +107,8 @@ def handle_image(event):
 
     with open(image_path, 'wb') as f:
         f.write(image_content.content)
+    print(f"📩 收到圖片 ID: {message_id}")
+    print(f"🔽 下載圖片成功：{image_path}")
 
     # 3️⃣ 處理圖片與推論
     img0 = cv2.imread(image_path)
@@ -155,6 +156,7 @@ def handle_image(event):
 
     result_img_path = os.path.join(UPLOAD_FOLDER, f"result_{image_name}")
     Image.fromarray(cv2.cvtColor(img0, cv2.COLOR_BGR2RGB)).save(result_img_path)
+    print(f"🖼️ 標註圖已儲存：{result_img_path}")
 
     # 6️⃣ 記憶體釋放
     del pred
@@ -190,4 +192,5 @@ def home():
 
 if __name__ == "__main__":
     init_db()  # 啟動伺服器前先確保資料表存在
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    port = int(os.environ.get('PORT', 5000))  # Render 會給你正確的 port
+    app.run(host='0.0.0.0', port=port)
