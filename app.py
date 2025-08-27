@@ -8,8 +8,8 @@ from PIL import Image
 
 app = Flask(__name__)
 
-LINE_CHANNEL_SECRET = "你的 Channel Secret"
-LINE_CHANNEL_ACCESS_TOKEN = "你的 Channel Access Token"
+LINE_CHANNEL_SECRET = "LINE_CHANNEL_SECRET"
+LINE_CHANNEL_ACCESS_TOKEN = "LINE_CHANNEL_ACCESS_TOKEN"
 
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
