@@ -1,11 +1,5 @@
 flask
 line-bot-sdk
 pillow
-torch
-opencv-python-headless
+requests
 gunicorn
-numpy
-matplotlib
-PyYAML
-seaborn
-tqdm
