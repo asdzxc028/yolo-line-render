@@ -1,11 +1,14 @@
+import os
+os.environ['MPLCONFIGDIR'] = '/tmp/matplotlib'
+import matplotlib
+matplotlib.use('Agg')
 from flask import Flask, request, abort, send_from_directory
 from linebot import LineBotApi, WebhookHandler
 from linebot.models import MessageEvent, ImageMessage, TextSendMessage, ImageSendMessage
 from linebot.exceptions import InvalidSignatureError
 import numpy as np
 import datetime
-import os
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import uuid
 import cv2
 import torch
@@ -167,20 +170,25 @@ def handle_image(event):
         ''', (image_name, time_now_full, label, count))
         conn.commit()
 
-    # 7️⃣ 在圖片上畫框
+    # 7️⃣ 在圖片上畫框，改為減少占用資源的版本
+    result_img = Image.fromarray(cv2.cvtColor(img0, cv2.COLOR_BGR2RGB))
+    draw = ImageDraw.Draw(result_img)
+    try:
+        font = ImageFont.truetype("arial.ttf", 16)
+    except:
+        font = ImageFont.load_default()
+
     for *box, conf, cls in pred.tolist():
         x1, y1, x2, y2 = map(int, box)
         label = model.names[int(cls)]
-        color = (0, 255, 0)
-        cv2.rectangle(img0, (x1, y1), (x2, y2), color, 2)
-        cv2.putText(img0, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.8, color, 2, lineType=cv2.LINE_AA)
+        draw.rectangle([(x1, y1), (x2, y2)], outline="green", width=2)
+        draw.text((x1, y1 - 10), label, fill="green", font=font)
 
     result_img_path = os.path.join(UPLOAD_FOLDER, f"result_{image_name}")
-    Image.fromarray(cv2.cvtColor(img0, cv2.COLOR_BGR2RGB)).save(result_img_path)
+    result_img.save(result_img_path)
     print(f"🖼️ 標註圖已儲存：{result_img_path}")
 
-    # 8️⃣ 回傳 LINE 訊息
+    # 7️⃣ 回傳 LINE 訊息
     time_now = datetime.datetime.now().strftime('%H:%M')
     message_text = f"辨識時間：{time_now}\n"
     for label, count in detected_items.items():
