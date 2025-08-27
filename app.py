@@ -47,7 +47,7 @@ app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB
 UPLOAD_FOLDER = 'static/uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 DB_PATH = os.path.join(UPLOAD_FOLDER, 'detections.db')
-device = select_device('')
+device = select_device('cpu')
 weights_path = os.getenv("MODEL_PATH", "animals.pt")
 model = DetectMultiBackend(weights_path, device=device)
 model.names = model.names or {i: f'class_{i}' for i in range(1000)}
@@ -121,7 +121,7 @@ def handle_image(event):
         return
 
     # 4️⃣ 處理圖片
-    img = letterbox(img0, new_shape=640)[0]
+    img = letterbox(img0, new_shape=320)[0]
     img = img[:, :, ::-1].transpose(2, 0, 1)  # BGR → RGB → CHW
     img = np.ascontiguousarray(img)
 
@@ -133,7 +133,7 @@ def handle_image(event):
     # 5️⃣ 推論
     try:
         pred = model(img_tensor)
-        pred = non_max_suppression(pred, conf_thres=0.25, iou_thres=0.45)[0]
+        pred = non_max_suppression(pred, conf_thres=0.3, iou_thres=0.45)[0]
 
         if pred is not None and len(pred):
             pred[:, :4] = scale_coords(img_tensor.shape[2:], pred[:, :4], img0.shape).round()
@@ -149,7 +149,13 @@ def handle_image(event):
         return
     finally:
        del img_tensor
+       del img
+       del image_content
+       if pred is not None:
+           del pred
        torch.cuda.empty_cache()
+       import gc
+       gc.collect()
     # 6️⃣ 儲存到資料庫
     time_now_full = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     with sqlite3.connect(DB_PATH) as conn:
