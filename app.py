@@ -43,6 +43,9 @@ def callback():
         return "OK", 200
 
     return "OK", 200
+@app.route("/", methods=["GET"])
+def index():
+    return "✅ LINE Bot Server is running", 200
 
 @handler.add(MessageEvent, message=ImageMessage)
 def handle_image_message(event):
