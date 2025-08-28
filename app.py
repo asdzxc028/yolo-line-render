@@ -16,7 +16,7 @@ handler = WebhookHandler(LINE_CHANNEL_SECRET)
 if not LINE_CHANNEL_SECRET or not LINE_CHANNEL_ACCESS_TOKEN:
     raise ValueError("❌ 請設定 LINE_CHANNEL_SECRET 和 LINE_CHANNEL_ACCESS_TOKEN 環境變數")
 HF_SPACE_NAME = "ylrasd-yolo-line-render"
-HF_API_URL = f"https://{HF_SPACE_NAME}.hf.space/run/predict"
+HF_API_URL = f"https://{HF_SPACE_NAME}.hf.space/file/static/uploads"
 HF_DB_URL = f"https://{HF_SPACE_NAME}.hf.space/file/static/uploads/detections.db"
 
 # 🔥 全域 Exception 捕捉，方便 debug
@@ -72,7 +72,7 @@ def handle_image_message(event):
             print("🔥 JSON 解析錯誤:", e)
             message_text = "⚠️ YOLO 回傳資料異常"
             image_url = "https://placekitten.com/300/300"
-        # 🔹 補上這段：回覆 LINE 使用者
+        # 🔹 回覆 LINE 使用者
     line_bot_api.reply_message(
         event.reply_token,
         [
