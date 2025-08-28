@@ -6,6 +6,7 @@ import requests, traceback
 from io import BytesIO
 from PIL import Image
 import os
+import base64
 app = Flask(__name__)
 
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
@@ -52,13 +53,14 @@ def handle_image_message(event):
     message_content = line_bot_api.get_message_content(event.message.id)
     image = Image.open(BytesIO(message_content.content))
 
+    # 將 PIL 圖片轉成 base64
     buffered = BytesIO()
     image.save(buffered, format="JPEG")
+    img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
 
-    # 呼叫 Hugging Face Space
-    files = {"data": ("test.jpg", open("test.jpg", "rb"), "image/jpeg")}
-    res = requests.post(url, files=files)
-    print(res.json())
+    # 呼叫 Hugging Face Space API
+    payload = {"data": [img_str]}
+    res = requests.post(url, json=payload)
 
     if res.status_code != 200:
         message_text = f"⚠️ YOLO 服務錯誤：{res.status_code}"
@@ -73,14 +75,14 @@ def handle_image_message(event):
             message_text = "⚠️ YOLO 回傳資料異常"
             image_url = "https://placekitten.com/300/300"
         # 🔹 回覆 LINE 使用者
-    line_bot_api.reply_message(
-        event.reply_token,
-        [
-            TextSendMessage(text=message_text),
-            ImageSendMessage(original_content_url=image_url, preview_image_url=image_url),
-            TextSendMessage(text="📥 下載完整資料庫：https://yolo-line-render.onrender.com/download_db")
-        ]
-    )
+        line_bot_api.reply_message(
+            event.reply_token,
+            [
+                TextSendMessage(text=message_text),
+                ImageSendMessage(original_content_url=image_url, preview_image_url=image_url),
+                TextSendMessage(text="📥 下載完整資料庫：https://yolo-line-render.onrender.com/download_db")
+            ]
+        )
 
 @app.route("/download_db", methods=["GET"])
 def download_db():
