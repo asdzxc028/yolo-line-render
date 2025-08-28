@@ -58,7 +58,9 @@ def handle_image_message(event):
 
     # 呼叫 Hugging Face Space
     response = requests.post(HF_API_URL, json={"data": [img_str]})
-    print("📡 HF 回傳內容:", response.text)  # 👈 先印出來確認格式
+    print("📡 HF 回傳內容:", response.text)
+
+    # ⬇️ 直接解析平面 JSON
     result = response.json()
     message_text = result.get("message", "⚠️ YOLO 沒有回傳 message")
     image_url = result.get("image_url", "https://placekitten.com/300/300")
