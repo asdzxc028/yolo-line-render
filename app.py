@@ -16,7 +16,7 @@ handler = WebhookHandler(LINE_CHANNEL_SECRET)
 if not LINE_CHANNEL_SECRET or not LINE_CHANNEL_ACCESS_TOKEN:
     raise ValueError("❌ 請設定 LINE_CHANNEL_SECRET 和 LINE_CHANNEL_ACCESS_TOKEN 環境變數")
 HF_SPACE_NAME = "ylrasd-yolo-line-render"
-HF_API_URL = f"https://{HF_SPACE_NAME}.hf.space/api/predict/detect"
+url = f"https://{HF_SPACE_NAME}.hf.space/run/detect"
 HF_DB_URL = f"https://{HF_SPACE_NAME}.hf.space/static/uploads/detections.db"
 
 # 🔥 全域 Exception 捕捉，方便 debug
@@ -56,17 +56,16 @@ def handle_image_message(event):
     image.save(buffered, format="JPEG")
 
     # 呼叫 Hugging Face Space
-    files = {"image": ("input.jpg", buffered.getvalue(), "image/jpeg")}
-    response = requests.post(HF_API_URL, files=files)
+    files = {"data": ("test.jpg", open("test.jpg", "rb"), "image/jpeg")}
+    res = requests.post(url, files=files)
+    print(res.json())
 
-    print("📡 HF 回傳內容:", response.text)
-
-    if response.status_code != 200:
-        message_text = f"⚠️ YOLO 服務錯誤：{response.status_code}"
+    if res.status_code != 200:
+        message_text = f"⚠️ YOLO 服務錯誤：{res.status_code}"
         image_url = "https://placekitten.com/300/300"
     else:
         try:
-            result = response.json()
+            result = res.json()
             message_text = result.get("message", "⚠️ YOLO 沒有回傳 message")
             image_url = result.get("image_url", "https://placekitten.com/300/300")
         except Exception as e:
