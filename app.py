@@ -17,7 +17,7 @@ handler = WebhookHandler(LINE_CHANNEL_SECRET)
 if not LINE_CHANNEL_SECRET or not LINE_CHANNEL_ACCESS_TOKEN:
     raise ValueError("❌ 請設定 LINE_CHANNEL_SECRET 和 LINE_CHANNEL_ACCESS_TOKEN 環境變數")
 HF_SPACE_NAME = "ylrasd-yolo-line-render"
-url = f"https://{HF_SPACE_NAME}.hf.space/run/detect"
+url = f"https://{HF_SPACE_NAME}.hf.space/api/predict/detect"
 HF_DB_URL = f"https://{HF_SPACE_NAME}.hf.space/static/uploads/detections.db"
 
 # 🔥 全域 Exception 捕捉，方便 debug
