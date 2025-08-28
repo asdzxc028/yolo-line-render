@@ -2,7 +2,7 @@ from flask import Flask, request, Response
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, ImageMessage, TextSendMessage, ImageSendMessage
-import requests, base64, traceback
+import requests, traceback
 from io import BytesIO
 from PIL import Image
 import os
@@ -16,7 +16,7 @@ handler = WebhookHandler(LINE_CHANNEL_SECRET)
 if not LINE_CHANNEL_SECRET or not LINE_CHANNEL_ACCESS_TOKEN:
     raise ValueError("❌ 請設定 LINE_CHANNEL_SECRET 和 LINE_CHANNEL_ACCESS_TOKEN 環境變數")
 HF_SPACE_NAME = "ylrasd-yolo-line-render"
-HF_API_URL = f"https://{HF_SPACE_NAME}.hf.space/predict/detect"
+HF_API_URL = f"https://{HF_SPACE_NAME}.hf.space/run/detect"
 HF_DB_URL = f"https://{HF_SPACE_NAME}.hf.space/static/uploads/detections.db"
 
 # 🔥 全域 Exception 捕捉，方便 debug
@@ -54,10 +54,11 @@ def handle_image_message(event):
 
     buffered = BytesIO()
     image.save(buffered, format="JPEG")
-    img_str = base64.b64encode(buffered.getvalue()).decode()
 
     # 呼叫 Hugging Face Space
-    response = requests.post(HF_API_URL, json={"data": [img_str]})
+    files = {"image": ("input.jpg", buffered.getvalue(), "image/jpeg")}
+    response = requests.post(HF_API_URL, files=files)
+
     print("📡 HF 回傳內容:", response.text)
 
     if response.status_code != 200:
