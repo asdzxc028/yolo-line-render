@@ -1,4 +1,4 @@
-from flask import Flask, request, abort, Response
+from flask import Flask, request, Response
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, ImageMessage, TextSendMessage, ImageSendMessage
@@ -60,11 +60,19 @@ def handle_image_message(event):
     response = requests.post(HF_API_URL, json={"data": [img_str]})
     print("📡 HF 回傳內容:", response.text)
 
-    # ⬇️ 直接解析平面 JSON
-    result = response.json()
-    message_text = result.get("message", "⚠️ YOLO 沒有回傳 message")
-    image_url = result.get("image_url", "https://placekitten.com/300/300")
-
+    if response.status_code != 200:
+        message_text = f"⚠️ YOLO 服務錯誤：{response.status_code}"
+        image_url = "https://placekitten.com/300/300"
+    else:
+        try:
+            result = response.json()
+            message_text = result.get("message", "⚠️ YOLO 沒有回傳 message")
+            image_url = result.get("image_url", "https://placekitten.com/300/300")
+        except Exception as e:
+            print("🔥 JSON 解析錯誤:", e)
+            message_text = "⚠️ YOLO 回傳資料異常"
+            image_url = "https://placekitten.com/300/300"
+        # 🔹 補上這段：回覆 LINE 使用者
     line_bot_api.reply_message(
         event.reply_token,
         [
