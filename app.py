@@ -90,15 +90,19 @@ def handle_image_message(event):
 # 資料庫下載
 @app.route("/download_db", methods=["GET"])
 def download_db():
-    r = requests.get(HF_DB_URL, stream=True)
-    if r.status_code == 200:
-        return Response(
-            r.iter_content(chunk_size=8192),
-            content_type=r.headers.get("content-type", "application/octet-stream"),
-            headers={"Content-Disposition": "attachment; filename=detections.db"}
-        )
-    else:
-        return "❌ 從 Hugging Face Space 抓不到資料庫", 404
+    try:
+        r = requests.get(HF_DB_URL, stream=True, timeout=10)
+        if r.status_code == 200:
+            return Response(
+                r.iter_content(chunk_size=8192),
+                content_type=r.headers.get("content-type", "application/octet-stream"),
+                headers={"Content-Disposition": "attachment; filename=detections.db"}
+            )
+        else:
+            return "❌ 從 Hugging Face Space 抓不到資料庫", 404
+    except requests.exceptions.RequestException as e:
+        print(f"❌ 抓取資料庫時發生錯誤：{e}")
+        return "❌ 資料庫服務目前無法連線，請稍後再試", 500
     
 @app.route("/", methods=["GET"])
 def index():
