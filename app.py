@@ -31,10 +31,12 @@ HF_DB_URL = f"https://{HF_SPACE_NAME}.hf.space/api/download_db"
 def callback():
     signature = request.headers['X-Line-Signature']
     body = request.get_data(as_text=True)
+    print("📩 收到 Webhook 請求：", body)
 
     try:
         handler.handle(body, signature)
     except InvalidSignatureError:
+        print("❌ Webhook 驗證失敗")
         return 'Invalid signature', 403
     return 'OK'
 
@@ -53,7 +55,7 @@ def handle_image_message(event):
         
         # 發出 POST 請求
         payload = {"data": [img_str]}
-        headers = {"User-Agent": "LineYOLOBot/1.0"}
+        headers = {"User-Agent": "LineYOLOBot/1.0","Content-Type": "application/json"}
         res = requests.post(HF_API_URL, json=payload, headers=headers, timeout=20)
         res.raise_for_status()
 
@@ -66,15 +68,15 @@ def handle_image_message(event):
                 result = res.json()
             except ValueError:
                 result = {}
-            message_text = result.get("data", [{}])[0].get("message", "⚠️ 沒有回傳 message")
-            image_url = result.get("data", [{}])[0].get("image_url", "https://placekitten.com/300/300")
-
+            base_url = f"https://{HF_SPACE_NAME}.hf.space"
+            image_url = result.get("image_url", "/file/default.jpg")
+            full_image_url = base_url + image_url
         # 回傳到 LINE
         line_bot_api.reply_message(
             event.reply_token,
             [
                 TextSendMessage(text=message_text),
-                ImageSendMessage(original_content_url=image_url, preview_image_url=image_url),
+                ImageSendMessage(original_content_url=full_image_url, preview_image_url=full_image_url),
                 TextSendMessage(text=f"📥 下載完整資料庫：{HF_DB_URL}")
             ]
         )
