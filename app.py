@@ -50,7 +50,8 @@ def handle_image_message(event):
         image.save(buffered, format="JPEG")
         img_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
         img_str = f"data:image/jpeg;base64,{img_base64}"
-
+        
+        # 發出 POST 請求
         payload = {"data": [img_str]}
         res = requests.post(HF_API_URL, json=payload, timeout=20)
 
