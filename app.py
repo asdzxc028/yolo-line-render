@@ -4,9 +4,7 @@ from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, ImageMessage, TextSendMessage, ImageSendMessage
 import requests, traceback
 from io import BytesIO
-from PIL import Image
 import os
-import base64
 
 app = Flask(__name__)
 
@@ -29,7 +27,7 @@ HF_DB_URL = f"https://{HF_SPACE_NAME}.hf.space/api/download_db"
 # LINE Webhook 路由
 @app.route("/callback", methods=['POST'])
 def callback():
-    signature = request.headers['X-Line-Signature']
+    signature = request.headers.get('X-Line-Signature', '')
     body = request.get_data(as_text=True)
     print("📩 收到 Webhook 請求：", body)
 
@@ -38,6 +36,9 @@ def callback():
     except InvalidSignatureError:
         print("❌ Webhook 驗證失敗")
         return 'Invalid signature', 403
+    except Exception as e:
+        print(f"❌ Callback 處理失敗：{e}")
+        return 'Internal Server Error', 500
     return 'OK'
 
 # 處理圖片訊息的方式
