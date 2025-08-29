@@ -61,7 +61,6 @@ def handle_image_message(event):
             message_text = f"⚠️ YOLO 服務錯誤：{res.status_code}"
             image_url = "https://placekitten.com/300/300"
         else:
-            result = res.json()
             try:
                 result = res.json()
             except ValueError:
