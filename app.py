@@ -44,34 +44,28 @@ def callback():
 @handler.add(MessageEvent, message=ImageMessage)
 def handle_image_message(event):
     try:
+        # 下載 LINE 傳來的圖片
         message_content = line_bot_api.get_message_content(event.message.id)
-        image = Image.open(BytesIO(message_content.content))
+        image_bytes = BytesIO(message_content.content)
 
-        # 圖片轉 base64 傳給 Hugging Face Space
-        buffered = BytesIO()
-        image.save(buffered, format="JPEG")
-        img_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
-        img_str = f"data:image/jpeg;base64,{img_base64}"
+        # 直接用 multipart/form-data 上傳給 Hugging Face API
+        files = {
+            "file": ("image.jpg", image_bytes, "image/jpeg")
+        }
+        headers = {"User-Agent": "LineYOLOBot/1.0"}
         
-        # 發出 POST 請求
-        payload = {"data": [img_str]}
-        headers = {"User-Agent": "LineYOLOBot/1.0","Content-Type": "application/json"}
-        res = requests.post(HF_API_URL, json=payload, headers=headers, timeout=20)
+        res = requests.post(HF_API_URL, files=files, headers=headers, timeout=20)
         res.raise_for_status()
 
-        if res.status_code != 200:
-            print(f"❌ API 錯誤內容: {res.text}")
-            message_text = f"⚠️ YOLO 服務錯誤：{res.status_code}"
-            image_url = "https://placekitten.com/300/300"
-        else:
-            try:
-                result = res.json()
-            except ValueError:
-                result = {}
-            base_url = f"https://{HF_SPACE_NAME}.hf.space"
-            image_url = result.get("image_url", "/file/default.jpg")
-            full_image_url = base_url + image_url
-        # 回傳到 LINE
+        result = res.json()
+        
+        # 取得文字與圖片 URL
+        message_text = result.get("message", "⚠️ 沒有回傳 message")
+        image_url = result.get("image_url", "/file/default.jpg")
+        base_url = f"https://{HF_SPACE_NAME}.hf.space"
+        full_image_url = base_url + image_url
+        
+        # 回傳給 LINE
         line_bot_api.reply_message(
             event.reply_token,
             [
