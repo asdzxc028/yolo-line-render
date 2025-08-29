@@ -24,7 +24,7 @@ handler = WebhookHandler(LINE_CHANNEL_SECRET)
 # Hugging Face 設定
 HF_SPACE_NAME = "ylrasd-yolo-line-render"
 HF_API_URL = f"https://{HF_SPACE_NAME}.hf.space/api/predict/detect"
-HF_DB_URL = f"https://{HF_SPACE_NAME}.hf.space/static/uploads/detections.db"
+HF_DB_URL = f"https://{HF_SPACE_NAME}.hf.space/api/download_db"
 
 # LINE Webhook 路由
 @app.route("/callback", methods=['POST'])
@@ -62,6 +62,10 @@ def handle_image_message(event):
             image_url = "https://placekitten.com/300/300"
         else:
             result = res.json()
+            try:
+                result = res.json()
+            except ValueError:
+                result = {}
             message_text = result.get("data", [{}])[0].get("message", "⚠️ 沒有回傳 message")
             image_url = result.get("data", [{}])[0].get("image_url", "https://placekitten.com/300/300")
 
