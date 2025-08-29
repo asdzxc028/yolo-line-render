@@ -23,7 +23,7 @@ handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
 # Hugging Face 設定
 HF_SPACE_NAME = "ylrasd-yolo-line-render"
-HF_API_URL = f"https://{HF_SPACE_NAME}.hf.space/api/predict/detect"
+HF_API_URL = f"https://{HF_SPACE_NAME}.hf.space/run/predict"
 HF_DB_URL = f"https://{HF_SPACE_NAME}.hf.space/api/download_db"
 
 # LINE Webhook 路由
