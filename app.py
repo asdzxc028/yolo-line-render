@@ -23,7 +23,7 @@ handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
 # Hugging Face 設定
 HF_SPACE_NAME = "ylrasd-yolo-line-render"
-HF_API_URL = f"https://{HF_SPACE_NAME}.hf.space/api/predict/detect"
+HF_API_URL = f"https://{HF_SPACE_NAME}.hf.space/api/predict"
 HF_DB_URL = f"https://{HF_SPACE_NAME}.hf.space/api/download_db"
 
 # LINE Webhook 路由
@@ -55,6 +55,7 @@ def handle_image_message(event):
         payload = {"data": [img_str]}
         headers = {"User-Agent": "LineYOLOBot/1.0"}
         res = requests.post(HF_API_URL, json=payload, headers=headers, timeout=20)
+        res.raise_for_status()
 
         if res.status_code != 200:
             print(f"❌ API 錯誤內容: {res.text}")
@@ -74,7 +75,7 @@ def handle_image_message(event):
             [
                 TextSendMessage(text=message_text),
                 ImageSendMessage(original_content_url=image_url, preview_image_url=image_url),
-                TextSendMessage(text="📥 下載完整資料庫：https://yolo-line-render.onrender.com/download_db")
+                TextSendMessage(text=f"📥 下載完整資料庫：{HF_DB_URL}")
             ]
         )
 
