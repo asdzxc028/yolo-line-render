@@ -53,9 +53,11 @@ def handle_image_message(event):
         
         # 發出 POST 請求
         payload = {"data": [img_str]}
-        res = requests.post(HF_API_URL, json=payload, timeout=20)
+        headers = {"User-Agent": "LineYOLOBot/1.0"}
+        res = requests.post(HF_API_URL, json=payload, headers=headers, timeout=20)
 
         if res.status_code != 200:
+            print(f"❌ API 錯誤內容: {res.text}")
             message_text = f"⚠️ YOLO 服務錯誤：{res.status_code}"
             image_url = "https://placekitten.com/300/300"
         else:
@@ -93,8 +95,13 @@ def download_db():
         )
     else:
         return "❌ 從 Hugging Face Space 抓不到資料庫", 404
+    
+@app.route("/", methods=["GET"])
+def index():
+    return "🚀 LINE YOLO Bot 正在運行中", 200
 
 # 啟動程式
 if __name__ == "__main__":
-    app.run(port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
 
