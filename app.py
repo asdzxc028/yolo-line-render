@@ -62,8 +62,8 @@ def handle_image_message(event):
         
         # 取得文字與圖片 URL
         message_text = result.get("message", "⚠️ 沒有回傳 message")
-        image_url = result.get("image_url", "/file/default.jpg")
         base_url = f"https://{HF_SPACE_NAME}.hf.space"
+        image_url = result.get("image_url", "/file/default.jpg")
         full_image_url = base_url + image_url
         
         # 回傳給 LINE
