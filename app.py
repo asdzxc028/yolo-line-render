@@ -5,6 +5,7 @@ from linebot.models import MessageEvent, ImageMessage, TextSendMessage, ImageSen
 import requests, traceback
 from io import BytesIO
 import os
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -49,12 +50,16 @@ def handle_image_message(event):
         message_content = line_bot_api.get_message_content(event.message.id)
         image_bytes = BytesIO(message_content.content)
 
-        # 直接用 multipart/form-data 上傳給 Hugging Face API
+        # 使用圖片 ID + 時間命名
+        message_id = event.message.id
+        timestamp = datetime.now().strftime("%H%M")
+        filename = f"{message_id}_{timestamp}.jpg"
+        
+        # 上傳給 Hugging Face API
         files = {
-            "file": ("image.jpg", image_bytes, "image/jpeg")
+            "file": (filename, image_bytes, "image/jpeg")
         }
         headers = {"User-Agent": "LineYOLOBot/1.0"}
-        
         res = requests.post(HF_API_URL, files=files, headers=headers, timeout=20)
         res.raise_for_status()
 
@@ -62,9 +67,7 @@ def handle_image_message(event):
         
         # 取得文字與圖片 URL
         message_text = result.get("message", "⚠️ 沒有回傳 message")
-        base_url = f"https://{HF_SPACE_NAME}.hf.space"
-        image_url = result.get("image_url", "/file/default.jpg")
-        full_image_url = base_url + image_url
+        full_image_url = f"https://{HF_SPACE_NAME}.hf.space{result.get('image_url', '/file/default.jpg')}"
         
         # 回傳給 LINE
         line_bot_api.reply_message(
