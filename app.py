@@ -68,6 +68,7 @@ def handle_image_message(event):
         # 取得文字與圖片 URL
         message_text = result.get("message", "⚠️ 沒有回傳 message")
         image_url = result.get("image_url", "/file/default.jpg")
+        filename = image_url.split("/")[-1] 
 
         # 若是完整 URL，直接使用；否則補上完整域名
         if image_url.startswith("http"):
@@ -80,7 +81,7 @@ def handle_image_message(event):
             event.reply_token,
             [
                 TextSendMessage(text=message_text),
-                TextSendMessage(text=f"📥 下載圖片：https://{HF_SPACE_NAME}.hf.space/download/{filename}"),
+                TextSendMessage(text=f"📥 下載已標註圖片：https://{HF_SPACE_NAME}.hf.space/download/{filename}"),
                 TextSendMessage(text=f"📥 下載完整資料庫：{HF_DB_URL}")
             ]
         )
