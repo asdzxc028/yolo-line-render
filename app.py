@@ -67,9 +67,15 @@ def handle_image_message(event):
         
         # 取得文字與圖片 URL
         message_text = result.get("message", "⚠️ 沒有回傳 message")
-        full_image_url = f"https://{HF_SPACE_NAME}.hf.space{result.get('image_url', '/file/default.jpg')}"
-        
-        # 回傳給 LINE
+        image_url = result.get("image_url", "/file/default.jpg")
+
+        # 若是完整 URL，直接使用；否則補上完整域名
+        if image_url.startswith("http"):
+            full_image_url = image_url
+        else:
+            full_image_url = f"https://{HF_SPACE_NAME}.hf.space{image_url}"
+
+        # 回傳給 LINE（用文字方式傳連結）
         line_bot_api.reply_message(
             event.reply_token,
             [
