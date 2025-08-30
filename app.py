@@ -74,7 +74,7 @@ def handle_image_message(event):
             event.reply_token,
             [
                 TextSendMessage(text=message_text),
-                ImageSendMessage(original_content_url=full_image_url, preview_image_url=full_image_url),
+                TextSendMessage(text=f"🖼️ 辨識圖片連結：{full_image_url}"),
                 TextSendMessage(text=f"📥 下載完整資料庫：{HF_DB_URL}")
             ]
         )
