@@ -1,7 +1,7 @@
 from flask import Flask, request, Response
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, ImageMessage, TextSendMessage
+from linebot.models import MessageEvent, ImageMessage, TextSendMessage,ImageSendMessage
 import requests, traceback
 from io import BytesIO
 import os
@@ -81,7 +81,10 @@ def handle_image_message(event):
             event.reply_token,
             [
                 TextSendMessage(text=message_text),
-                TextSendMessage(text=f"📥 下載已標註圖片：https://{HF_SPACE_NAME}.hf.space/download/{filename}"),
+                ImageSendMessage(
+                    original_content_url=full_image_url,
+                    preview_image_url=full_image_url  
+                ),
                 TextSendMessage(text=f"📥 下載完整資料庫：{HF_DB_URL}")
             ]
         )
