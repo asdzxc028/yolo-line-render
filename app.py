@@ -56,6 +56,7 @@ def handle_image_message(event):
         message_id = event.message.id
         timestamp = datetime.now().strftime("%H%M")
         filename = f"{message_id}_{timestamp}.jpg"
+        image_bytes.seek(0)
         
         # 上傳給 Hugging Face API
         files = {
@@ -73,6 +74,11 @@ def handle_image_message(event):
         message_text = result.get("message", "⚠️ 沒有回傳 message")
         image_url = result.get("image_url", "/file/default.jpg")
         thumb_url = result.get("thumb_url", image_url)
+        if not image_url.startswith("http"):
+            image_url = url_join(f"https://{HF_SPACE_NAME}.hf.space", image_url)
+
+        if not thumb_url.startswith("http"):
+            thumb_url = url_join(f"https://{HF_SPACE_NAME}.hf.space", thumb_url)
 
         # 若是完整 URL，直接使用；否則補上完整域名
         # 統一加上完整網址（避免 /file... 開頭導致 URL 錯誤）
@@ -171,6 +177,10 @@ def clean_upload_folder(folder_path):
 @app.route("/uploads/<filename>")
 def serve_line_image(filename):
     return send_from_directory("static/uploads", filename)
+def url_join(base, path):
+    if not path.startswith("/"):
+        path = "/" + path
+    return base + path
 
 
 @app.route("/", methods=["GET"])
