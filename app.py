@@ -63,6 +63,7 @@ def handle_image_message(event):
             "file": (filename, image_bytes, "image/jpeg")
         }
         headers = {"User-Agent": "LineYOLOBot/1.0"}
+        print("🚀 發送 API 到：", HF_API_URL)
         res = requests.post(HF_API_URL, files=files, headers=headers, timeout=20)
         res.raise_for_status()
         result = res.json()
