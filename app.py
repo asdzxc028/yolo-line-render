@@ -68,13 +68,18 @@ def handle_image_message(event):
         # 取得文字與圖片 URL
         message_text = result.get("message", "⚠️ 沒有回傳 message")
         image_url = result.get("image_url", "/file/default.jpg")
-        filename = image_url.split("/")[-1] 
+        thumb_url = result.get("thumb_url", image_url)
 
         # 若是完整 URL，直接使用；否則補上完整域名
-        if image_url.startswith("http"):
-            full_image_url = image_url
-        else:
+        if not image_url.startswith("http"):
             full_image_url = f"https://{HF_SPACE_NAME}.hf.space{image_url}"
+        else:
+            full_image_url = image_url
+
+        if not thumb_url.startswith("http"):
+            full_thumb_url = f"https://{HF_SPACE_NAME}.hf.space{thumb_url}"
+        else:
+            full_thumb_url = thumb_url
 
         # 回傳給 LINE（用文字方式傳連結）
         line_bot_api.reply_message(
@@ -83,7 +88,7 @@ def handle_image_message(event):
                 TextSendMessage(text=message_text),
                 ImageSendMessage(
                     original_content_url=full_image_url,
-                    preview_image_url=full_image_url  
+                    preview_image_url=full_thumb_url  
                 ),
                 TextSendMessage(text=f"📥 下載完整資料庫：{HF_DB_URL}")
             ]
