@@ -6,6 +6,8 @@ import requests, traceback
 from io import BytesIO
 import os
 from datetime import datetime
+from flask import send_from_directory
+import glob
 
 app = Flask(__name__)
 
@@ -62,8 +64,9 @@ def handle_image_message(event):
         headers = {"User-Agent": "LineYOLOBot/1.0"}
         res = requests.post(HF_API_URL, files=files, headers=headers, timeout=20)
         res.raise_for_status()
-
         result = res.json()
+        hf_image_url = result.get("image_url", "")
+
         print(f"👤 事件來源類型：{event.source.type}")
 
         # 取得文字與圖片 URL
@@ -75,6 +78,20 @@ def handle_image_message(event):
         # 統一加上完整網址（避免 /file... 開頭導致 URL 錯誤）
         image_url = f"https://{HF_SPACE_NAME}.hf.space{image_url}" if not image_url.startswith("http") else image_url
         thumb_url = f"https://{HF_SPACE_NAME}.hf.space{thumb_url}" if not thumb_url.startswith("http") else thumb_url
+        
+        # 下載圖片到本地
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        local_filename = f"{message_id}_{timestamp}_result.jpg"
+        # 清除 uploads 資料夾中的檔案（除了 .gitkeep）
+        upload_folder = os.path.join("static", "uploads")
+        clean_upload_folder(upload_folder)
+        # 確保目錄存在
+        os.makedirs(upload_folder, exist_ok=True)
+        # 儲存圖片
+        local_path = os.path.join("static", "uploads", local_filename)
+        download_and_save_image(hf_image_url, local_path)
+        your_base_url = os.getenv("BASE_URL")
+        local_image_url = f"{your_base_url}/uploads/{local_filename}"
         # 回覆給觸發的人，表示 Bot 已收到訊息
         line_bot_api.reply_message(
             event.reply_token,
@@ -85,8 +102,8 @@ def handle_image_message(event):
         smart_push_message(event, [
             TextSendMessage(text=message_text),
             ImageSendMessage(
-                original_content_url=image_url,
-                preview_image_url=thumb_url  
+                original_content_url=local_image_url,
+                preview_image_url=local_image_url,  
             ),
             TextSendMessage(text=f"📥 下載完整資料庫：{HF_DB_URL}")
         ])
@@ -127,6 +144,28 @@ def smart_push_message(event, messages):
             print("⚠️ 無法推送訊息，未知來源：", source)
     except Exception as e:
         print(f"❌ 推送訊息失敗：{e}")
+
+def download_and_save_image(url, save_path):
+    try:
+        r = requests.get(url, stream=True)
+        if r.status_code == 200:
+            with open(save_path, 'wb') as f:
+                for chunk in r.iter_content(1024):
+                    f.write(chunk)
+            return True
+    except Exception as e:
+        print(f"❌ 下載圖片失敗: {e}")
+    return False
+
+def clean_upload_folder(folder_path):
+    for file_path in glob.glob(os.path.join(folder_path, "*")):
+        if os.path.isfile(file_path) and not file_path.endswith(".gitkeep"):
+            os.remove(file_path)
+            
+@app.route("/uploads/<filename>")
+def serve_line_image(filename):
+    return send_from_directory("static/uploads", filename)
+
 
 @app.route("/", methods=["GET"])
 def index():
