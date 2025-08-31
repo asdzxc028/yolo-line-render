@@ -92,6 +92,12 @@ def handle_image_message(event):
         download_and_save_image(hf_image_url, local_path)
         your_base_url = os.getenv("BASE_URL")
         local_image_url = f"{your_base_url}/uploads/{local_filename}"
+        # 儲存縮圖
+        thumb_filename = f"thumb_{local_filename}"
+        thumb_local_path = os.path.join("static", "uploads", thumb_filename)
+        download_and_save_image(thumb_url, thumb_local_path)
+        local_thumb_url = f"{your_base_url}/uploads/{thumb_filename}"
+
         # 回覆給觸發的人，表示 Bot 已收到訊息
         line_bot_api.reply_message(
             event.reply_token,
@@ -103,7 +109,7 @@ def handle_image_message(event):
             TextSendMessage(text=message_text),
             ImageSendMessage(
                 original_content_url=local_image_url,
-                preview_image_url=local_image_url,  
+                preview_image_url=local_thumb_url,  
             ),
             TextSendMessage(text=f"📥 下載完整資料庫：{HF_DB_URL}")
         ])
