@@ -80,19 +80,21 @@ def handle_image_message(event):
             full_thumb_url = f"https://{HF_SPACE_NAME}.hf.space{thumb_url}"
         else:
             full_thumb_url = thumb_url
-
-        # 回傳給 LINE（用文字方式傳連結）
+        # 回覆給觸發的人，表示 Bot 已收到訊息
         line_bot_api.reply_message(
             event.reply_token,
-            [
-                TextSendMessage(text=message_text),
-                ImageSendMessage(
-                    original_content_url=full_image_url,
-                    preview_image_url=full_thumb_url  
-                ),
-                TextSendMessage(text=f"📥 下載完整資料庫：{HF_DB_URL}")
-            ]
+            TextSendMessage(text="📸 圖片處理中，請稍候...")
         )
+
+        # 圖片處理後，主動推播給整個群組或個人
+        smart_push_message(event, [
+            TextSendMessage(text=message_text),
+            ImageSendMessage(
+                original_content_url=full_image_url,
+                preview_image_url=full_thumb_url  
+            ),
+            TextSendMessage(text=f"📥 下載完整資料庫：{HF_DB_URL}")
+        ])
 
     except Exception as e:
         print(f"🔥 發生例外：{e}")
@@ -119,6 +121,18 @@ def download_db():
         print(f"❌ 抓取資料庫時發生錯誤：{e}")
         return "❌ 資料庫服務目前無法連線，請稍後再試", 500
     
+def smart_push_message(event, messages):
+    source = event.source
+    try:
+        if source.type == "group" and source.group_id:
+            line_bot_api.push_message(source.group_id, messages)
+        elif source.type == "user" and source.user_id:
+            line_bot_api.push_message(source.user_id, messages)
+        else:
+            print("⚠️ 無法推送訊息，未知來源：", source)
+    except Exception as e:
+        print(f"❌ 推送訊息失敗：{e}")
+
 @app.route("/", methods=["GET"])
 def index():
     return "🚀 LINE YOLO Bot 正在運行中", 200
