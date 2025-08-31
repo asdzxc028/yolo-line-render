@@ -64,22 +64,17 @@ def handle_image_message(event):
         res.raise_for_status()
 
         result = res.json()
-        
+        print(f"👤 事件來源類型：{event.source.type}")
+
         # 取得文字與圖片 URL
         message_text = result.get("message", "⚠️ 沒有回傳 message")
         image_url = result.get("image_url", "/file/default.jpg")
         thumb_url = result.get("thumb_url", image_url)
 
         # 若是完整 URL，直接使用；否則補上完整域名
-        if not image_url.startswith("http"):
-            full_image_url = f"https://{HF_SPACE_NAME}.hf.space{image_url}"
-        else:
-            full_image_url = image_url
-
-        if not thumb_url.startswith("http"):
-            full_thumb_url = f"https://{HF_SPACE_NAME}.hf.space{thumb_url}"
-        else:
-            full_thumb_url = thumb_url
+        # 統一加上完整網址（避免 /file... 開頭導致 URL 錯誤）
+        image_url = f"https://{HF_SPACE_NAME}.hf.space{image_url}" if not image_url.startswith("http") else image_url
+        thumb_url = f"https://{HF_SPACE_NAME}.hf.space{thumb_url}" if not thumb_url.startswith("http") else thumb_url
         # 回覆給觸發的人，表示 Bot 已收到訊息
         line_bot_api.reply_message(
             event.reply_token,
@@ -90,8 +85,8 @@ def handle_image_message(event):
         smart_push_message(event, [
             TextSendMessage(text=message_text),
             ImageSendMessage(
-                original_content_url=full_image_url,
-                preview_image_url=full_thumb_url  
+                original_content_url=image_url,
+                preview_image_url=thumb_url  
             ),
             TextSendMessage(text=f"📥 下載完整資料庫：{HF_DB_URL}")
         ])
